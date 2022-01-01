@@ -1,6 +1,8 @@
 const express = require('express');
 const mysql = require('mysql2');
 
+const inputCheck = require('./utils/inputCheck');
+
 const PORT = process.env.PORT || 3001;
 const app = express();
 
@@ -36,7 +38,6 @@ app.get('/api/candidates', (req, res) => {
     });
 })
 
-
 //GET a single candidate
 app.get('/api/candidates/:id', (req, res) => {
     const sql = `SELECT * FROM candidates WHERE id = ?`
@@ -56,28 +57,58 @@ app.get('/api/candidates/:id', (req, res) => {
 })
 
 
-// //DELETE a candidate
-// db.query(`DELETE FROM candidates WHERE id = ?`, 1, (err, result) => {
-//     if (err) {
-//         console.log(err);
-//     };
+//DELETE a candidate
+app.delete('/api/candidates/:id', (req, res) => {
+    const sql = `DELETE FROM candidates WHERE id = ?`;
+    const params = [req.params.id];
 
-//     console.log(result);
-// })
+    db.query(sql, params, (err, result) => {
+        if (err) {
+            res.statusMessage(500).json({ error: err.message });
+        }
+        else if (!result.affectedRows) {
+            res.json({
+                message: 'Candidate not found'
+            });
+        }
+        else {
+            res.json({
+                message: 'deleted',
+                changes: result.affectedRows,
+                id: req.params.id
+            });
+        }
+    });
+})
 
 // //CREATE a new candidate
-// const sql = `INSERT INTO candidates (id, first_name, last_name, industry_connected)
-//             VALUES (?, ?, ?, ?)`;
+app.post('/api/candidate', ({ body }, res) => {
+    const errors = inputCheck(body, 'first_name', 'last_name', 'industry_connected')
 
-// const params = [1, 'Ronald', 'Firbank', 1];
+    if (errors) {
+        res.status(400).json({ errors: errors });
+        return;
+    };
 
-// db.query(sql, params, (err, result) => {
-//     if (err) {
-//         console.log(err);
-//     };
+    const sql = `INSERT INTO candidates (id, first_name, last_name, industry_connected)
+            VALUES (?, ?, ?, ?)`;
 
-//     console.log(result);
-// })
+    const params = [1, 'Ronald', 'Firbank', 1];
+
+    db.query(sql, params, (err, result) => {
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+
+        res.json({
+            message: 'success',
+            data: body
+        })
+    });
+})
+
+
 
 //default response for any other request (Not found)
 app.use((req, res) => {
